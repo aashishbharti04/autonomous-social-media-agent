@@ -91,6 +91,14 @@ Everything defaults to **mock** (`LLM_PROVIDER=mock`, `IMAGE_PROVIDER=mock`, `DB
 
 ---
 
+## ☁️ Deploy (live public URL)
+
+Deploy both the API and dashboard for free on Render using the included [`render.yaml`](render.yaml) blueprint. Full click-by-click steps: **[DEPLOY.md](DEPLOY.md)**.
+
+Quick version: Render → New + → Blueprint → pick this repo → after the API deploys, set the dashboard's `NEXT_PUBLIC_API_BASE_URL` to the API's URL and redeploy it.
+
+---
+
 ## 🧰 Tech stack
 
 **Frontend:** Next.js 14 (App Router), React 18, Tailwind CSS, TypeScript

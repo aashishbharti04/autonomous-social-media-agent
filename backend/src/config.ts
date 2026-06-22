@@ -22,8 +22,14 @@ function env(key: string, fallback = ''): string {
 export const config = {
   port: Number(env('PORT', '4000')),
   nodeEnv: env('NODE_ENV', 'development'),
-  /** Absolute base URL used to build links to uploaded media. */
-  publicBaseUrl: env('PUBLIC_BASE_URL', `http://localhost:${Number(env('PORT', '4000'))}`),
+  /**
+   * Absolute base URL used to build links to uploaded media.
+   * Falls back to Render's injected RENDER_EXTERNAL_URL in production.
+   */
+  publicBaseUrl: env(
+    'PUBLIC_BASE_URL',
+    env('RENDER_EXTERNAL_URL', `http://localhost:${Number(env('PORT', '4000'))}`),
+  ),
 
   llm: {
     provider: env('LLM_PROVIDER', 'mock') as 'mock' | 'anthropic' | 'openai',

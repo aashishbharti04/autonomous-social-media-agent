@@ -1,0 +1,43 @@
+# Render Blueprint — deploys BOTH the API and the dashboard from this repo.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# After the first deploy, set asma-web's NEXT_PUBLIC_API_BASE_URL to the
+# asma-api service URL (https://asma-api.onrender.com) and redeploy asma-web.
+# See DEPLOY.md for the exact click-by-click steps.
+
+services:
+  # ---- Backend: Express API + AI orchestrator ----
+  - type: web
+    name: asma-api
+    runtime: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm install && npm --workspace backend run build
+    startCommand: node backend/dist/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LLM_PROVIDER
+        value: mock
+      - key: IMAGE_PROVIDER
+        value: mock
+      - key: VECTOR_PROVIDER
+        value: memory
+      - key: DB_PROVIDER
+        value: memory
+      # PORT and RENDER_EXTERNAL_URL are injected automatically by Render.
+
+  # ---- Frontend: Next.js dashboard ----
+  - type: web
+    name: asma-web
+    runtime: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm install && npm --workspace frontend run build
+    startCommand: npm --workspace frontend run start
+    envVars:
+      # Build-time URL of the API. Set this to the asma-api URL after the
+      # first deploy, then redeploy this service. (Render prompts for it.)
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false
