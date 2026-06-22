@@ -4,11 +4,18 @@ import { appMode } from '../config.js';
 import { memory } from '../memory/vector-memory.js';
 import { orchestrator } from '../orchestrator/orchestrator.js';
 import { detectTrends } from '../services/trends.js';
+import { accountStore } from '../store/accounts.js';
 import { repo } from '../store/repository.js';
-import { PLATFORMS } from '../types.js';
+import { accountsRouter } from './accounts.js';
+import { mediaRouter } from './media.js';
+import { PLATFORMS, type ContentBrief } from '../types.js';
 
 export const api = Router();
 const startedAt = Date.now();
+
+// Sub-resources
+api.use('/accounts', accountsRouter);
+api.use('/media', mediaRouter);
 
 const briefSchema = z.object({
   businessType: z.string().min(2),
@@ -18,7 +25,24 @@ const briefSchema = z.object({
     .enum(['professional', 'friendly', 'witty', 'inspirational', 'bold'])
     .default('professional'),
   userId: z.string().optional(),
+  accountId: z.string().optional(),
+  imageUrl: z.string().url().optional(),
 });
+
+/**
+ * Resolve a validated body into a ContentBrief. If an accountId is supplied,
+ * the connected account's platform takes precedence over the body's platform.
+ */
+function toBrief(body: z.infer<typeof briefSchema>): ContentBrief {
+  const brief = { ...body } as ContentBrief;
+  if (body.accountId) {
+    const account = accountStore.get(body.accountId);
+    if (!account) throw new Error('Connected account not found');
+    if (!account.active) throw new Error('That account is paused — reactivate it first');
+    brief.platform = account.platform;
+  }
+  return brief;
+}
 
 // ---- Health & meta ----
 api.get('/health', (_req, res) => {
@@ -35,8 +59,8 @@ api.get('/agents', (_req, res) => {
 // ---- Content ----
 api.post('/content/generate', async (req, res, next) => {
   try {
-    const brief = briefSchema.parse(req.body);
-    const data = await orchestrator.generateDraft(brief as never);
+    const brief = toBrief(briefSchema.parse(req.body));
+    const data = await orchestrator.generateDraft(brief);
     res.json({ ok: true, data });
   } catch (err) {
     next(err);
@@ -46,8 +70,8 @@ api.post('/content/generate', async (req, res, next) => {
 // ---- Campaign (full pipeline) ----
 api.post('/campaign/run', async (req, res, next) => {
   try {
-    const brief = briefSchema.parse(req.body);
-    const data = await orchestrator.runCampaign(brief as never);
+    const brief = toBrief(briefSchema.parse(req.body));
+    const data = await orchestrator.runCampaign(brief);
     res.json({ ok: true, data });
   } catch (err) {
     next(err);

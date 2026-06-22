@@ -28,6 +28,7 @@ export class PublishingAgent extends BaseAgent<ContentBrief, Post> {
 
     let post = repo.createPost({
       userId,
+      accountId: brief.accountId,
       platform: brief.platform,
       content: String(ctx.blackboard.content ?? ''),
       hashtags: (ctx.blackboard.hashtags as string[]) ?? [],

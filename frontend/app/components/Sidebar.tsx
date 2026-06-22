@@ -16,7 +16,10 @@ const NAV: NavItem[] = [
   { href: '/analytics', label: 'Analytics', icon: '📈' },
   { href: '/trends', label: 'Trends', icon: '🔥' },
   { href: '/memory', label: 'Memory', icon: '🧠' },
+  { href: '/accounts', label: 'Accounts', icon: '🔗' },
+  { href: '/media', label: 'Media', icon: '🖼️' },
   { href: '/agents', label: 'Agents', icon: '🤖' },
+  { href: '/guide', label: 'Guide', icon: '📖' },
 ];
 
 export default function Sidebar() {

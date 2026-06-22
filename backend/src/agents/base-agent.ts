@@ -39,7 +39,7 @@ export abstract class BaseAgent<TInput, TOutput> {
   protected abstract handle(input: TInput, ctx: SharedContext): Promise<TOutput>;
 
   /** Short human-readable summary of the output, shown in the run timeline. */
-  protected abstract summarize(output: TOutput): string;
+  protected abstract summarize(output: TOutput, ctx: SharedContext): string;
 
   async run(input: TInput, ctx: SharedContext): Promise<TOutput> {
     this.status = 'running';
@@ -51,7 +51,7 @@ export abstract class BaseAgent<TInput, TOutput> {
       this.lastRunAt = new Date().toISOString();
       this.status = 'idle';
 
-      const summary = this.summarize(output);
+      const summary = this.summarize(output, ctx);
       ctx.timeline.push({ agent: this.id, ms, summary });
       ctx.events.push({ agent: this.id, message: summary, at: this.lastRunAt });
       return output;

@@ -12,6 +12,12 @@ export class ImageAgent extends BaseAgent<ContentBrief, string> {
   readonly name = 'Image Agent';
 
   protected async handle(brief: ContentBrief, ctx: SharedContext): Promise<string> {
+    // If the user attached an existing asset, reuse it instead of generating.
+    if (brief.imageUrl) {
+      ctx.blackboard.imageUrl = brief.imageUrl;
+      ctx.blackboard.imageReused = true;
+      return brief.imageUrl;
+    }
     const keywords = (ctx.blackboard.seoKeywords as string[] | undefined) ?? [];
     const prompt = `${brief.businessType}, ${brief.tone} style, themes: ${keywords
       .slice(0, 4)
@@ -21,7 +27,9 @@ export class ImageAgent extends BaseAgent<ContentBrief, string> {
     return url;
   }
 
-  protected summarize(): string {
-    return 'Generated creative (1024×1024)';
+  protected summarize(_output: string, ctx: SharedContext): string {
+    return ctx.blackboard.imageReused
+      ? 'Attached existing media asset'
+      : 'Generated creative (1024×1024)';
   }
 }

@@ -1,15 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import {
   generateContent,
   runCampaign,
+  getAccounts,
+  getMedia,
   ApiError,
   PLATFORMS,
   type Platform,
   type Draft,
   type CampaignResult,
+  type ConnectedAccount,
+  type MediaAsset,
 } from '@/lib/api';
 import Card from '../components/Card';
 import Badge, { toneForStatus } from '../components/Badge';
@@ -18,6 +22,7 @@ import StatCard from '../components/StatCard';
 import { formatNumber, formatPercent, formatDate } from '../components/format';
 
 type Action = 'draft' | 'campaign' | null;
+type ImageMode = 'auto' | 'library';
 
 export default function ComposePage() {
   const [businessType, setBusinessType] = useState('Dental Clinic');
@@ -25,17 +30,67 @@ export default function ComposePage() {
   const [platform, setPlatform] = useState<Platform>('linkedin');
   const [tone, setTone] = useState('professional');
 
+  // Optional: target account + image source.
+  const [accountId, setAccountId] = useState('');
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
+  const [imageMode, setImageMode] = useState<ImageMode>('auto');
+  const [imageUrl, setImageUrl] = useState('');
+  const [media, setMedia] = useState<MediaAsset[]>([]);
+  const [mediaLoaded, setMediaLoaded] = useState(false);
+
   const [pending, setPending] = useState<Action>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [campaign, setCampaign] = useState<CampaignResult | null>(null);
 
   const busy = pending !== null;
+  const accountSelected = accountId !== '';
+
+  // Load connected accounts for the optional target dropdown (best-effort).
+  useEffect(() => {
+    let cancelled = false;
+    getAccounts()
+      .then((data) => {
+        if (!cancelled) setAccounts(data);
+      })
+      .catch(() => {
+        /* backend down / no accounts — dropdown just stays empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Lazily load the media library the first time the user picks "from library".
+  useEffect(() => {
+    if (imageMode !== 'library' || mediaLoaded) return;
+    let cancelled = false;
+    getMedia()
+      .then((data) => {
+        if (!cancelled) {
+          setMedia(data);
+          setMediaLoaded(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMediaLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageMode, mediaLoaded]);
 
   async function handle(action: Exclude<Action, null>) {
     setPending(action);
     setError(null);
-    const payload = { businessType, goal, platform, tone };
+    const payload = {
+      businessType,
+      goal,
+      platform,
+      tone,
+      ...(accountSelected ? { accountId } : {}),
+      ...(imageMode === 'library' && imageUrl ? { imageUrl } : {}),
+    };
     try {
       if (action === 'draft') {
         setCampaign(null);
@@ -95,12 +150,32 @@ export default function ComposePage() {
             </div>
 
             <div>
+              <label className="label" htmlFor="account">
+                Target account <span className="text-slate-500">(optional)</span>
+              </label>
+              <select
+                id="account"
+                className="input"
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+              >
+                <option value="">Auto (use platform below)</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label} (@{a.handle.replace(/^@/, '')} · {a.platform})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
               <label className="label" htmlFor="platform">Platform</label>
               <select
                 id="platform"
                 className="input capitalize"
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value as Platform)}
+                disabled={accountSelected}
               >
                 {PLATFORMS.map((p) => (
                   <option key={p} value={p} className="capitalize">
@@ -108,6 +183,59 @@ export default function ComposePage() {
                   </option>
                 ))}
               </select>
+              {accountSelected && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Using the selected account&apos;s platform.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="label" htmlFor="imageMode">Image</label>
+              <select
+                id="imageMode"
+                className="input"
+                value={imageMode}
+                onChange={(e) => setImageMode(e.target.value as ImageMode)}
+              >
+                <option value="auto">Auto-generate (default)</option>
+                <option value="library">Attach from library</option>
+              </select>
+              {imageMode === 'library' && (
+                <div className="mt-2">
+                  {!mediaLoaded ? (
+                    <p className="text-xs text-slate-500">Loading media…</p>
+                  ) : media.length === 0 ? (
+                    <p className="text-xs text-slate-500">
+                      No media yet — add some on the Media page.
+                    </p>
+                  ) : (
+                    <select
+                      className="input"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      aria-label="Select an image from the library"
+                    >
+                      <option value="">Select an image…</option>
+                      {media.map((m) => (
+                        <option key={m.id} value={m.url}>
+                          {m.source} · {m.prompt || m.id.slice(0, 8)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {imageUrl && (
+                    <div className="mt-2 overflow-hidden rounded-lg border border-slate-800">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imageUrl}
+                        alt="Selected media"
+                        className="h-28 w-full object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>

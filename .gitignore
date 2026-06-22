@@ -27,5 +27,6 @@ Thumbs.db
 
 # Data / runtime
 data/*.json
+data/uploads/
 !data/.gitkeep
 *.sqlite

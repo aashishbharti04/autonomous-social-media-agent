@@ -39,6 +39,7 @@ export interface SocialAccount {
 export interface Post {
   id: string;
   userId: string;
+  accountId?: string;
   platform: Platform;
   content: string;
   hashtags: string[];
@@ -83,6 +84,48 @@ export interface ContentBrief {
   platform: Platform;
   tone: Tone;
   userId?: string;
+  /** Publish to a specific connected account (overrides platform). */
+  accountId?: string;
+  /** Attach an existing media asset instead of generating an image. */
+  imageUrl?: string;
+}
+
+/** A client's social account that the agent can automate. */
+export interface ConnectedAccount {
+  id: string;
+  platform: Platform;
+  handle: string;
+  label: string;
+  active: boolean;
+  /** Raw token kept server-side; never serialized to clients. */
+  accessToken: string;
+  createdAt: string;
+}
+
+/** Public view of an account — token redacted. */
+export interface AccountView {
+  id: string;
+  platform: Platform;
+  handle: string;
+  label: string;
+  active: boolean;
+  connected: boolean;
+  tokenMasked: string;
+  createdAt: string;
+}
+
+export type MediaSource = 'upload' | 'generated';
+
+export interface MediaAsset {
+  id: string;
+  url: string;
+  /** Disk path for uploads (absent for remote/generated URLs). */
+  filePath?: string;
+  source: MediaSource;
+  mimeType: string;
+  sizeBytes: number;
+  prompt?: string | null;
+  createdAt: string;
 }
 
 export interface TrendIdea {

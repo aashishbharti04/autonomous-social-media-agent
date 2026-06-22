@@ -4,7 +4,7 @@
 
 Built as a unified **Node.js + TypeScript** monorepo (Express API + Next.js dashboard). It runs **fully offline in mock mode** — no API keys required — so the complete multi-agent pipeline, RAG memory and auto-learning loop are demonstrable out of the box. Real providers (Claude/OpenAI, Stability, ChromaDB, social APIs) drop in behind the same interfaces.
 
-> MCA project. See [`docs/research.md`](docs/research.md) for the thesis research component (Manual vs AI vs Autonomous comparison).
+> MCA project. New here? Read the **[User Guide](USER_GUIDE.md)** (also available in-app under **Guide**). See [`docs/research.md`](docs/research.md) for the thesis research component (Manual vs AI vs Autonomous comparison).
 
 ---
 
@@ -16,7 +16,9 @@ Built as a unified **Node.js + TypeScript** monorepo (Express API + Next.js dash
 - **Auto-learning loop** — the Recommendation agent writes each post's outcome back into memory, so future content is tuned by what actually performed.
 - **Trend Detection Engine** — surfaces content ideas from (mock) Google Trends / Reddit / News / social signals.
 - **Provider-agnostic** — every external dependency has a mock default and a live integration point.
-- **Polished dashboard** — compose, run full campaigns, browse posts, view analytics, explore trends, search memory.
+- **Client account management** — connect/pause/disconnect the social accounts you want to automate; pick a target account per campaign.
+- **Media library** — upload images, generate them via the Image Agent, delete them, and attach them to posts.
+- **Polished dashboard** — compose, run full campaigns, manage accounts & media, browse posts, view analytics, explore trends, search memory, plus an in-app user guide.
 
 ---
 
@@ -109,9 +111,10 @@ Everything defaults to **mock** (`LLM_PROVIDER=mock`, `IMAGE_PROVIDER=mock`, `DB
 │       ├── orchestrator/    # sequences the agents
 │       ├── memory/          # RAG vector memory
 │       ├── services/        # llm, image, social, trends (mock + live)
-│       ├── store/           # in-memory repository (mirrors db/schema.sql)
-│       ├── routes/          # REST API
+│       ├── store/           # repository, accounts & media (JSON-persisted)
+│       ├── routes/          # REST API (api, accounts, media)
 │       └── index.ts
+├── data/                    # persisted accounts.json, media.json, uploads/ (gitignored)
 ├── frontend/                # Next.js dashboard
 │   ├── app/                 # pages + components (App Router)
 │   └── lib/api.ts           # typed API client

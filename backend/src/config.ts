@@ -4,8 +4,16 @@ import { fileURLToPath } from 'node:url';
 
 // Load the repo-root .env (one level up from backend/) as well as a local .env.
 const here = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(here, '../../.env') });
+const repoRoot = path.resolve(here, '../..');
+dotenv.config({ path: path.resolve(repoRoot, '.env') });
 dotenv.config();
+
+/** Filesystem locations for persisted data and uploaded media. */
+export const paths = {
+  root: repoRoot,
+  dataDir: path.resolve(repoRoot, 'data'),
+  uploadsDir: path.resolve(repoRoot, 'data', 'uploads'),
+};
 
 function env(key: string, fallback = ''): string {
   return process.env[key]?.trim() || fallback;
@@ -14,6 +22,8 @@ function env(key: string, fallback = ''): string {
 export const config = {
   port: Number(env('PORT', '4000')),
   nodeEnv: env('NODE_ENV', 'development'),
+  /** Absolute base URL used to build links to uploaded media. */
+  publicBaseUrl: env('PUBLIC_BASE_URL', `http://localhost:${Number(env('PORT', '4000'))}`),
 
   llm: {
     provider: env('LLM_PROVIDER', 'mock') as 'mock' | 'anthropic' | 'openai',

@@ -112,3 +112,79 @@ Trend Detection Engine output (mock): `{ source, topic, score, suggestedAngle }[
 ### `GET /api/memory/search?q=dental+leads&k=5`
 Vector similarity search over past posts/engagement. Returns
 `{ id, text, score, metadata }[]`. Powers the self-learning loop.
+
+---
+
+## Social accounts (client connections)
+
+Each record represents a client's social account you want to automate. Tokens are stored server-side and **never returned** — responses include `tokenMasked` and a `connected` flag. Persisted to `data/accounts.json`.
+
+Account shape:
+```json
+{
+  "id": "uuid",
+  "platform": "linkedin",
+  "handle": "@bright-smile",
+  "label": "Bright Smile Dental",
+  "active": true,
+  "connected": true,
+  "tokenMasked": "••••••ab",
+  "createdAt": "2026-06-22T10:00:00.000Z"
+}
+```
+
+### `GET /api/accounts`
+List all connected accounts.
+
+### `POST /api/accounts`
+Connect a new account.
+Request: `{ "platform": "linkedin", "handle": "@bright-smile", "label": "Bright Smile Dental", "accessToken": "optional" }`
+`platform` ∈ the six platforms. Returns the created account.
+
+### `PATCH /api/accounts/:id`
+Update `label`, `handle`, `active`, or `accessToken`. Returns the updated account.
+
+### `DELETE /api/accounts/:id`
+Disconnect/remove an account. Returns `{ "deleted": true }`.
+
+---
+
+## Media library
+
+Image assets — uploaded or AI-generated — that can be attached to posts. Metadata persisted to `data/media.json`; uploaded files served from `/uploads/<filename>`.
+
+Asset shape:
+```json
+{
+  "id": "uuid",
+  "url": "http://localhost:4000/uploads/abc.png",
+  "source": "upload",
+  "mimeType": "image/png",
+  "sizeBytes": 20480,
+  "prompt": null,
+  "createdAt": "2026-06-22T10:00:00.000Z"
+}
+```
+`source` ∈ `upload | generated`.
+
+### `GET /api/media`
+List all assets (newest first).
+
+### `POST /api/media/upload`
+`multipart/form-data` with field **`file`** (image, ≤ 5 MB). Returns the created asset.
+
+### `POST /api/media/generate`
+Generate an image via the Image agent backend.
+Request: `{ "prompt": "modern dental clinic", "businessType": "Dental Clinic", "platform": "linkedin" }`
+Returns the created `generated` asset.
+
+### `DELETE /api/media/:id`
+Delete an asset (removes the file if it was an upload). Returns `{ "deleted": true }`.
+
+---
+
+## Compose / campaign — optional fields
+
+`POST /api/content/generate` and `POST /api/campaign/run` accept two extra optional fields:
+- `accountId` — publish to a specific connected account (its platform overrides `platform` if given).
+- `imageUrl` — attach an existing media asset instead of generating a new image.
