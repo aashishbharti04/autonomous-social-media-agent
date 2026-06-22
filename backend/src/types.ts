@@ -33,6 +33,7 @@ export interface User {
   email: string;
   passwordHash: string;
   plan: 'free' | 'pro' | 'business';
+  emailVerified: boolean;
   createdAt: string;
 }
 

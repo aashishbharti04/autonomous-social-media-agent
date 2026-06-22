@@ -16,7 +16,21 @@ Body `{ "name", "email", "password" }` (password ≥ 6 chars). → `data: { toke
 Body `{ "email", "password" }`. → `data: { token, user }`. **401** on bad credentials.
 
 ### `GET /api/auth/me`
-(auth) → `data: { user }`.
+(auth) → `data: { user }`. `user` includes `emailVerified`.
+
+### `POST /api/auth/verify`
+Body `{ token }` (from the emailed link). Marks the email verified. **400** if invalid/expired.
+
+### `POST /api/auth/request-verification`
+(auth) Resends the verification email to the current user.
+
+### `POST /api/auth/forgot`
+Body `{ email }`. Sends a password-reset link if the email is registered. Always returns `{ sent: true }` (no account enumeration).
+
+### `POST /api/auth/reset`
+Body `{ token, password }`. Sets a new password from a valid reset link. **400** if invalid/expired.
+
+> Email delivery uses Resend when `RESEND_API_KEY` is set; otherwise links are logged to the server console (dev/demo). Login is **not** blocked by unverified email.
 
 ---
 

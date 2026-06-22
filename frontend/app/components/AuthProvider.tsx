@@ -23,7 +23,10 @@ import {
 import Spinner from './Spinner';
 
 /** Routes that render without the app shell and don't require a session. */
-export const PUBLIC_PATHS = ['/login', '/register'];
+export const PUBLIC_PATHS = ['/login', '/register', '/verify', '/reset', '/forgot'];
+
+/** Public routes that authenticated users should be bounced away from. */
+const AUTH_ONLY_PATHS = ['/login', '/register'];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.includes(pathname);
@@ -35,6 +38,7 @@ interface AuthContextValue {
   login: (body: LoginRequest) => Promise<void>;
   register: (body: RegisterRequest) => Promise<void>;
   logout: () => void;
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -105,8 +109,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   }, [router]);
 
+  const refresh = useCallback(async () => {
+    if (!getToken()) return;
+    try {
+      const res = await getMe();
+      setUser(res.user);
+    } catch {
+      /* ignore — token may have expired */
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );
@@ -122,12 +136,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const onPublicPath = isPublicPath(pathname);
+  const onAuthOnlyPath = AUTH_ONLY_PATHS.includes(pathname);
 
   useEffect(() => {
-    if (!loading && !user && !onPublicPath) {
-      router.replace('/login');
-    }
-  }, [loading, user, onPublicPath, router]);
+    if (loading) return;
+    if (!user && !onPublicPath) router.replace('/login');
+    else if (user && onAuthOnlyPath) router.replace('/');
+  }, [loading, user, onPublicPath, onAuthOnlyPath, router]);
 
   if (loading) {
     return (
@@ -137,8 +152,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  // Authenticated users shouldn't sit on the auth pages.
-  if (user && onPublicPath) {
+  // Authenticated users shouldn't sit on the login/register pages (but may use
+  // /verify, /reset, /forgot regardless of session).
+  if (user && onAuthOnlyPath) {
     return (
       <div className="grid min-h-screen place-items-center">
         <Spinner label="Redirecting…" />

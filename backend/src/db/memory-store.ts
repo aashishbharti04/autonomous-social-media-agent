@@ -46,6 +46,7 @@ export class MemoryStore implements Store {
       email: input.email.toLowerCase(),
       passwordHash: input.passwordHash,
       plan: 'free',
+      emailVerified: false,
       createdAt: new Date().toISOString(),
     };
     this.users.set(user.id, user);
@@ -58,6 +59,16 @@ export class MemoryStore implements Store {
 
   async getUserById(id: string): Promise<User | undefined> {
     return this.users.get(id);
+  }
+
+  async setEmailVerified(userId: string): Promise<void> {
+    const u = this.users.get(userId);
+    if (u) u.emailVerified = true;
+  }
+
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    const u = this.users.get(userId);
+    if (u) u.passwordHash = passwordHash;
   }
 
   // ---- Accounts ----

@@ -49,8 +49,10 @@ export class PostgresStore implements Store {
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         plan TEXT NOT NULL DEFAULT 'free',
+        email_verified BOOLEAN NOT NULL DEFAULT false,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
       CREATE TABLE IF NOT EXISTS accounts (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -143,6 +145,14 @@ export class PostgresStore implements Store {
   async getUserById(id: string): Promise<User | undefined> {
     const { rows } = await this.pool.query(`SELECT * FROM users WHERE id=$1`, [id]);
     return rows[0] ? mapUser(rows[0]) : undefined;
+  }
+
+  async setEmailVerified(userId: string): Promise<void> {
+    await this.pool.query(`UPDATE users SET email_verified=true WHERE id=$1`, [userId]);
+  }
+
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    await this.pool.query(`UPDATE users SET password_hash=$2 WHERE id=$1`, [userId, passwordHash]);
   }
 
   // ---- Accounts ----
@@ -454,6 +464,7 @@ function mapUser(r: any): User {
     email: r.email,
     passwordHash: r.password_hash,
     plan: r.plan,
+    emailVerified: r.email_verified ?? false,
     createdAt: iso(r.created_at)!,
   };
 }

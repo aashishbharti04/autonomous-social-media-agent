@@ -79,6 +79,12 @@ export default function LoginPage() {
           <button type="submit" className="btn-primary w-full justify-center" disabled={submitting}>
             {submitting ? 'Signing in…' : 'Sign in'}
           </button>
+
+          <p className="text-center text-xs">
+            <Link href="/forgot" className="text-slate-400 hover:text-slate-200">
+              Forgot your password?
+            </Link>
+          </p>
         </form>
       </Card>
 

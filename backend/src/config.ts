@@ -67,6 +67,15 @@ export const config = {
     jwtExpiresIn: env('JWT_EXPIRES_IN', '7d'),
   },
 
+  email: {
+    // "resend" when RESEND_API_KEY is set, else "console" (logs the link).
+    resendApiKey: env('RESEND_API_KEY'),
+    from: env('EMAIL_FROM', 'Autonomous Social Media Agent <onboarding@resend.dev>'),
+  },
+
+  // Public URL of the FRONTEND — used to build verify/reset links in emails.
+  appBaseUrl: env('APP_BASE_URL', 'http://localhost:3000'),
+
   // How often the scheduler checks for due posts (ms).
   schedulerIntervalMs: Number(env('SCHEDULER_INTERVAL_MS', '30000')),
 };

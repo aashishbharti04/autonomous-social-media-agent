@@ -16,10 +16,11 @@ Built as a unified **Node.js + TypeScript** monorepo (Express API + Next.js dash
 - **Auto-learning loop** — the Recommendation agent writes each post's outcome back into memory, so future content is tuned by what actually performed.
 - **Trend Detection Engine** — surfaces content ideas from (mock) Google Trends / Reddit / News / social signals.
 - **Provider-agnostic** — every external dependency has a mock default and a live integration point.
-- 🔐 **Accounts & multi-user** — email/password auth (JWT, bcrypt) with **per-user data isolation**; each user sees only their own accounts, posts, media and memory.
+- 🔐 **Accounts & multi-user** — email/password auth (JWT, bcrypt) with **per-user data isolation**; each user sees only their own accounts, posts, media and memory. Includes **email verification + password reset** (Resend, with a console fallback).
 - 🔑 **Bring-your-own AI keys** — add your own provider key(s) from a Settings page (Anthropic, OpenAI, or any OpenAI-compatible/**free** provider like Groq, OpenRouter, Gemini, Mistral) to generate real content; keys are **encrypted at rest**. Multiple keys, choose the active one.
 - 🗄️ **Persistent database** — PostgreSQL store (auto-migrates on boot) or an in-memory store for offline dev.
 - ⏱️ **Scheduling & post lifecycle** — `draft → scheduled → publishing → published / failed`, a background scheduler that auto-publishes due posts, and cancel/retry/publish-now controls.
+- 📣 **Real publishing** — Facebook Pages post for real via the Graph API using a connected account's token (others mock until their OAuth is wired). Setup: [docs/SOCIAL_PUBLISHING.md](docs/SOCIAL_PUBLISHING.md).
 - **Client account management** — connect/pause/disconnect the social accounts you want to automate; pick a target account per campaign.
 - **Media library** — upload images, generate them via the Image Agent, delete them, and attach them to posts.
 - **Polished dashboard** — login, compose & schedule campaigns, manage accounts & media, filter posts by status, view analytics, explore trends, search memory, plus an in-app user guide.

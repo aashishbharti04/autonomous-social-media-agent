@@ -43,6 +43,8 @@ export interface Store {
   createUser(input: CreateUserInput): Promise<User>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: string): Promise<User | undefined>;
+  setEmailVerified(userId: string): Promise<void>;
+  updatePassword(userId: string, passwordHash: string): Promise<void>;
 
   // Connected accounts
   listAccounts(userId: string): Promise<ConnectedAccount[]>;

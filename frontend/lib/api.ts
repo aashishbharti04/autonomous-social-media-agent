@@ -214,6 +214,7 @@ export interface AuthUser {
   name: string;
   email: string;
   plan: string;
+  emailVerified: boolean;
   createdAt: string;
 }
 
@@ -390,6 +391,31 @@ export function login(body: LoginRequest): Promise<AuthResponse> {
 
 export function getMe(): Promise<{ user: AuthUser }> {
   return request<{ user: AuthUser }>('/api/auth/me');
+}
+
+export function verifyEmail(token: string): Promise<{ verified: boolean }> {
+  return request<{ verified: boolean }>('/api/auth/verify', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export function requestVerification(): Promise<{ sent: boolean }> {
+  return request<{ sent: boolean }>('/api/auth/request-verification', { method: 'POST' });
+}
+
+export function forgotPassword(email: string): Promise<{ sent: boolean }> {
+  return request<{ sent: boolean }>('/api/auth/forgot', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function resetPassword(token: string, password: string): Promise<{ reset: boolean }> {
+  return request<{ reset: boolean }>('/api/auth/reset', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+  });
 }
 
 export function getAgents(): Promise<Agent[]> {

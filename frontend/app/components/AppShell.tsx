@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { type ReactNode } from 'react';
 import Sidebar from './Sidebar';
+import VerifyBanner from './VerifyBanner';
 import { AuthGate, PUBLIC_PATHS } from './AuthProvider';
 
 /**
@@ -35,6 +36,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               Autonomous Social Media Agent
             </h1>
           </header>
+          <VerifyBanner />
           <main className="mx-auto w-full max-w-6xl flex-1 px-8 py-8">{children}</main>
         </div>
       </div>

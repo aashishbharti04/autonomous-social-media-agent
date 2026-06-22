@@ -36,6 +36,13 @@ services:
       # Secret for signing login tokens — Render generates a strong value.
       - key: JWT_SECRET
         generateValue: true
+      # Frontend URL used to build verify/reset links in emails.
+      - key: APP_BASE_URL
+        value: https://asma-web.onrender.com
+      # Optional email sending (Resend). Without it, verify/reset links are
+      # logged to the service console instead of emailed.
+      - key: RESEND_API_KEY
+        sync: false
       # PORT and RENDER_EXTERNAL_URL are injected automatically by Render.
 
   # ---- Frontend: Next.js dashboard ----

@@ -26,6 +26,26 @@ export function verifyToken(token: string): string | null {
   }
 }
 
+type Purpose = 'verify' | 'reset';
+
+/** Signed, expiring token for email verification / password reset links. */
+export function signPurposeToken(userId: string, purpose: Purpose, expiresIn: string): string {
+  return jwt.sign({ sub: userId, purpose }, config.auth.jwtSecret, {
+    expiresIn,
+  } as jwt.SignOptions);
+}
+
+/** Returns the userId if the token is valid AND matches the expected purpose. */
+export function verifyPurposeToken(token: string, purpose: Purpose): string | null {
+  try {
+    const payload = jwt.verify(token, config.auth.jwtSecret) as { sub?: string; purpose?: string };
+    if (payload.purpose !== purpose) return null;
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Strip the password hash before returning a user to clients. */
 export function toSafeUser(user: User): SafeUser {
   const { passwordHash: _omit, ...safe } = user;
