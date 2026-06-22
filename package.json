@@ -1,0 +1,24 @@
+{
+  "name": "autonomous-social-media-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Autonomous Social Media Agent — AI-powered multi-agent platform for content creation, scheduling, publishing, analytics and self-learning optimization.",
+  "license": "MIT",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,magenta \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "npm --workspace backend run dev",
+    "dev:frontend": "npm --workspace frontend run dev",
+    "build": "npm --workspace backend run build && npm --workspace frontend run build",
+    "start:backend": "npm --workspace backend run start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
