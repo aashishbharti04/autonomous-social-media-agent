@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { appMode } from '../config.js';
 import { memory } from '../memory/vector-memory.js';
 import { orchestrator } from '../orchestrator/orchestrator.js';
+import { buildPlaceholderSvg } from '../services/image.js';
 import { detectTrends } from '../services/trends.js';
 import { accountStore } from '../store/accounts.js';
 import { repo } from '../store/repository.js';
@@ -54,6 +55,19 @@ api.get('/health', (_req, res) => {
 
 api.get('/agents', (_req, res) => {
   res.json({ ok: true, data: orchestrator.listAgents() });
+});
+
+// ---- Image placeholder (self-hosted mock creative) ----
+api.get('/image/placeholder', (req, res) => {
+  const svg = buildPlaceholderSvg({
+    title: String(req.query.title ?? 'Brand'),
+    subtitle: String(req.query.subtitle ?? ''),
+    badge: String(req.query.badge ?? ''),
+    seed: String(req.query.seed ?? req.query.title ?? 'seed'),
+  });
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(svg);
 });
 
 // ---- Content ----

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import {
   generateContent,
   runCampaign,
@@ -371,13 +370,11 @@ function DraftView({ draft, platform }: { draft: Draft; platform: Platform }) {
         </div>
         {draft.imageUrl && (
           <div className="overflow-hidden rounded-xl border border-slate-800">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={draft.imageUrl}
               alt="Generated visual"
-              width={1024}
-              height={1024}
               className="h-full w-full object-cover"
-              unoptimized
             />
           </div>
         )}
@@ -436,13 +433,11 @@ function CampaignView({ result }: { result: CampaignResult }) {
           </div>
           {post.imageUrl && (
             <div className="overflow-hidden rounded-xl border border-slate-800">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={post.imageUrl}
                 alt="Post visual"
-                width={1024}
-                height={1024}
                 className="h-full w-full object-cover"
-                unoptimized
               />
             </div>
           )}

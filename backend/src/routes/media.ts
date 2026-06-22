@@ -67,7 +67,7 @@ mediaRouter.post('/generate', async (req, res, next) => {
     const asset = mediaStore.add({
       url,
       source: 'generated',
-      mimeType: 'image/jpeg',
+      mimeType: 'image/svg+xml',
       sizeBytes: 0,
       prompt: input.prompt,
     });
