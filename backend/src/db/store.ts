@@ -32,6 +32,8 @@ export type AddRecommendationInput = Omit<Recommendation, 'id' | 'createdAt'>;
  * Everything except `users` is scoped by userId so each account sees only its own data.
  */
 export interface Store {
+  /** Which backend is active — surfaced at /api/health for observability. */
+  readonly kind: 'memory' | 'postgres';
   init(): Promise<void>;
 
   // Users

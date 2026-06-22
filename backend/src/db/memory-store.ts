@@ -22,6 +22,7 @@ import type {
  * development and offline demos. Use DB_PROVIDER=postgres for persistence.
  */
 export class MemoryStore implements Store {
+  readonly kind = 'memory' as const;
   private users = new Map<string, User>();
   private accounts = new Map<string, ConnectedAccount>();
   private media = new Map<string, MediaAsset>();

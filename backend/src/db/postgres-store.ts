@@ -25,6 +25,7 @@ const iso = (d: Date | null): string | undefined => (d ? d.toISOString() : undef
 
 /** PostgreSQL-backed store. Auto-creates its schema on init(). */
 export class PostgresStore implements Store {
+  readonly kind = 'postgres' as const;
   private pool: pg.Pool;
 
   constructor() {

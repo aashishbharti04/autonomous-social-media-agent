@@ -24,7 +24,7 @@ api.use('/media', mediaRouter); // self-applies requireAuth
 api.get('/health', (_req, res) => {
   res.json({
     ok: true,
-    data: { status: 'up', mode: appMode(), uptimeMs: Date.now() - startedAt },
+    data: { status: 'up', mode: appMode(), db: store.kind, uptimeMs: Date.now() - startedAt },
   });
 });
 
