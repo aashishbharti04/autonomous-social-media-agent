@@ -9,6 +9,7 @@ import { buildPlaceholderSvg } from '../services/image.js';
 import { detectTrends } from '../services/trends.js';
 import { authRouter } from './auth.js';
 import { accountsRouter } from './accounts.js';
+import { integrationsRouter } from './integrations.js';
 import { mediaRouter } from './media.js';
 import { PLATFORMS, type ContentBrief } from '../types.js';
 
@@ -18,6 +19,7 @@ const startedAt = Date.now();
 // ---- Sub-resources ----
 api.use('/auth', authRouter); // public (register/login)
 api.use('/accounts', accountsRouter); // self-applies requireAuth
+api.use('/integrations', integrationsRouter); // self-applies requireAuth
 api.use('/media', mediaRouter); // self-applies requireAuth
 
 // ---- Public: health & meta ----

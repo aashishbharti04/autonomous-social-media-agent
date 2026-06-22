@@ -4,7 +4,7 @@
 
 Built as a unified **Node.js + TypeScript** monorepo (Express API + Next.js dashboard). It runs **fully offline in mock mode** — no API keys required — so the complete multi-agent pipeline, RAG memory and auto-learning loop are demonstrable out of the box. Real providers (Claude/OpenAI, Stability, ChromaDB, social APIs) drop in behind the same interfaces.
 
-> MCA project. New here? Read the **[User Guide](USER_GUIDE.md)** (also available in-app under **Guide**). See [`docs/research.md`](docs/research.md) for the thesis research component (Manual vs AI vs Autonomous comparison).
+> MCA project. New here? Read the **[User Guide](USER_GUIDE.md)** (also available in-app under **Guide**). Presenting it? See the **[viva walkthrough script](docs/WALKTHROUGH.md)**. See [`docs/research.md`](docs/research.md) for the thesis research component (Manual vs AI vs Autonomous comparison).
 
 ---
 
@@ -17,6 +17,7 @@ Built as a unified **Node.js + TypeScript** monorepo (Express API + Next.js dash
 - **Trend Detection Engine** — surfaces content ideas from (mock) Google Trends / Reddit / News / social signals.
 - **Provider-agnostic** — every external dependency has a mock default and a live integration point.
 - 🔐 **Accounts & multi-user** — email/password auth (JWT, bcrypt) with **per-user data isolation**; each user sees only their own accounts, posts, media and memory.
+- 🔑 **Bring-your-own AI keys** — add your own provider key(s) from a Settings page (Anthropic, OpenAI, or any OpenAI-compatible/**free** provider like Groq, OpenRouter, Gemini, Mistral) to generate real content; keys are **encrypted at rest**. Multiple keys, choose the active one.
 - 🗄️ **Persistent database** — PostgreSQL store (auto-migrates on boot) or an in-memory store for offline dev.
 - ⏱️ **Scheduling & post lifecycle** — `draft → scheduled → publishing → published / failed`, a background scheduler that auto-publishes due posts, and cancel/retry/publish-now controls.
 - **Client account management** — connect/pause/disconnect the social accounts you want to automate; pick a target account per campaign.

@@ -209,6 +209,33 @@ Delete an asset (removes the file if it was an upload). Returns `{ "deleted": tr
 
 ---
 
+## AI provider integrations (bring-your-own keys)
+
+Per-user API keys for the Content agent. Add multiple; one is **active** per kind. Keys are **encrypted at rest** and never returned — responses show `keyMasked` only. The active key (if any) is used for real generation; otherwise the server falls back to its env key, then to template mode.
+
+Integration shape:
+```json
+{ "id": "uuid", "kind": "llm", "provider": "openai-compatible",
+  "label": "Groq (free)", "model": "llama-3.3-70b-versatile",
+  "baseUrl": "https://api.groq.com/openai/v1", "active": true,
+  "keyMasked": "••••7890", "createdAt": "..." }
+```
+`provider` ∈ `anthropic | openai | openai-compatible`. `openai-compatible` works with any OpenAI-format endpoint (Groq, OpenRouter, Google Gemini's OpenAI endpoint, Mistral, Together, …) and **requires** `baseUrl`.
+
+### `GET /api/integrations`
+List the user's keys (masked).
+
+### `POST /api/integrations`
+Body `{ provider, label, apiKey, model?, baseUrl? }`. Returns the created integration (masked). First key of a kind becomes active automatically.
+
+### `POST /api/integrations/:id/activate`
+Make this key the active one for its kind.
+
+### `DELETE /api/integrations/:id`
+Remove a key. Returns `{ "deleted": true }`.
+
+---
+
 ## Compose / campaign — optional fields
 
 `POST /api/content/generate` and `POST /api/campaign/run` accept two extra optional fields:

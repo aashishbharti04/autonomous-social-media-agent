@@ -83,7 +83,15 @@ class Orchestrator {
   async finalizeScheduledPost(post: Post): Promise<Post> {
     await store.updatePost(post.id, { status: 'publishing' });
     try {
-      const result = await publishToPlatform(post);
+      const token = post.accountId
+        ? (await store.getAccount(post.userId, post.accountId))?.accessToken
+        : undefined;
+      const result = await publishToPlatform(post, token || undefined);
+      if (result.error) {
+        return (
+          (await store.updatePost(post.id, { status: 'failed', failureReason: result.error })) ?? post
+        );
+      }
       const published =
         (await store.updatePost(post.id, {
           status: 'published',

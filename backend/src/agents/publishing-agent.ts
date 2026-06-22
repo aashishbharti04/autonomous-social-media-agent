@@ -45,13 +45,19 @@ export class PublishingAgent extends BaseAgent<ContentBrief, Post> {
 
     if (isFuture) return post; // waiting — the scheduler will publish it
 
-    const result = await publishToPlatform(post);
+    // Use the connected account's token for real publishing when available.
+    const token = brief.accountId
+      ? (await store.getAccount(brief.userId, brief.accountId))?.accessToken
+      : undefined;
+    const result = await publishToPlatform(post, token || undefined);
+
     post =
-      (await store.updatePost(post.id, {
-        status: 'published',
-        publishedAt: new Date().toISOString(),
-        externalId: result.externalId,
-      })) ?? post;
+      (await store.updatePost(
+        post.id,
+        result.error
+          ? { status: 'failed', failureReason: result.error }
+          : { status: 'published', publishedAt: new Date().toISOString(), externalId: result.externalId },
+      )) ?? post;
     return post;
   }
 

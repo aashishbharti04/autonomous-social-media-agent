@@ -1,6 +1,8 @@
+import { decryptSecret } from '../auth/crypto.js';
+import { store } from '../db/index.js';
 import { memory } from '../memory/vector-memory.js';
 import { generatePost, type GeneratedContent } from '../services/llm.js';
-import type { ContentBrief } from '../types.js';
+import type { ContentBrief, ResolvedLlm } from '../types.js';
 import { BaseAgent, type SharedContext } from './base-agent.js';
 
 /**
@@ -23,13 +25,27 @@ export class ContentAgent extends BaseAgent<ContentBrief, GeneratedContent> {
       .map((hit) => hit.text);
 
     ctx.blackboard.retrievedContext = recalled;
-    const generated = await generatePost(brief, recalled);
+
+    // Use the user's own active LLM key if they've added one (real generation).
+    const integration = await store.getActiveIntegration(brief.userId, 'llm');
+    const resolved: ResolvedLlm | null = integration
+      ? {
+          provider: integration.provider,
+          apiKey: decryptSecret(integration.secretEnc),
+          model: integration.model,
+          baseUrl: integration.baseUrl,
+        }
+      : null;
+    ctx.blackboard.llmProvider = integration ? integration.provider : 'mock';
+
+    const generated = await generatePost(brief, recalled, resolved);
     ctx.blackboard.content = generated.content;
     ctx.blackboard.hashtags = generated.hashtags;
     return generated;
   }
 
-  protected summarize(output: GeneratedContent): string {
-    return `Drafted ${output.content.length} chars + ${output.hashtags.length} hashtags`;
+  protected summarize(output: GeneratedContent, ctx: SharedContext): string {
+    const src = ctx.blackboard.llmProvider === 'mock' ? 'template' : `${ctx.blackboard.llmProvider}`;
+    return `Drafted ${output.content.length} chars + ${output.hashtags.length} hashtags (${src})`;
   }
 }

@@ -1,5 +1,5 @@
 import { config } from '../config.js';
-import type { ContentBrief, Platform } from '../types.js';
+import type { ContentBrief, Platform, ResolvedLlm } from '../types.js';
 
 export interface GeneratedContent {
   content: string;
@@ -16,21 +16,56 @@ const MAX_LEN: Record<Platform, number> = {
 };
 
 /**
- * LLM abstraction. Defaults to a template-based mock so the project runs with
- * zero API keys. Set LLM_PROVIDER=anthropic|openai (+ key) to generate live.
+ * LLM abstraction. Resolution order:
+ *   1. The user's active API key (passed as `resolved`) — real generation.
+ *   2. A server-wide key from env (LLM_PROVIDER + key).
+ *   3. Template-based mock (no key needed).
+ * Any provider error falls back to the mock so a campaign never hard-fails.
  */
 export async function generatePost(
   brief: ContentBrief,
   retrievedContext: string[],
+  resolved?: ResolvedLlm | null,
 ): Promise<GeneratedContent> {
   const prompt = buildPrompt(brief, retrievedContext);
 
-  if (config.llm.provider === 'anthropic' && config.llm.anthropicApiKey) {
-    return parse(await callAnthropic(prompt), brief.platform);
+  // 1. Per-user key.
+  if (resolved?.apiKey) {
+    try {
+      const raw =
+        resolved.provider === 'anthropic'
+          ? await callAnthropic(prompt, resolved.apiKey, resolved.model)
+          : await callOpenAICompatible(
+              prompt,
+              resolved.apiKey,
+              resolved.baseUrl || 'https://api.openai.com/v1',
+              resolved.model || 'gpt-4o-mini',
+            );
+      return parse(raw, brief.platform);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('User LLM call failed, falling back to mock:', (err as Error).message);
+      return mockPost(brief, retrievedContext);
+    }
   }
-  if (config.llm.provider === 'openai' && config.llm.openaiApiKey) {
-    return parse(await callOpenAI(prompt), brief.platform);
+
+  // 2. Server-wide env key.
+  try {
+    if (config.llm.provider === 'anthropic' && config.llm.anthropicApiKey) {
+      return parse(await callAnthropic(prompt, config.llm.anthropicApiKey, config.llm.anthropicModel), brief.platform);
+    }
+    if (config.llm.provider === 'openai' && config.llm.openaiApiKey) {
+      return parse(
+        await callOpenAICompatible(prompt, config.llm.openaiApiKey, 'https://api.openai.com/v1', config.llm.openaiModel),
+        brief.platform,
+      );
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('Server LLM call failed, falling back to mock:', (err as Error).message);
   }
+
+  // 3. Mock.
   return mockPost(brief, retrievedContext);
 }
 
@@ -45,18 +80,18 @@ function buildPrompt(brief: ContentBrief, ctx: string[]): string {
   ].join('\n');
 }
 
-// ---- Live providers (only used when a key is configured) ----
+// ---- Providers ----
 
-async function callAnthropic(prompt: string): Promise<string> {
+async function callAnthropic(prompt: string, apiKey: string, model?: string): Promise<string> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-api-key': config.llm.anthropicApiKey,
+      'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: config.llm.anthropicModel,
+      model: model || 'claude-opus-4-8',
       max_tokens: 600,
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -66,19 +101,24 @@ async function callAnthropic(prompt: string): Promise<string> {
   return json.content.map((c) => c.text).join('');
 }
 
-async function callOpenAI(prompt: string): Promise<string> {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+/**
+ * OpenAI Chat Completions format — works for OpenAI and every OpenAI-compatible
+ * provider (Groq, OpenRouter, Mistral, Together, Gemini's OpenAI endpoint, …)
+ * via a custom baseUrl.
+ */
+async function callOpenAICompatible(
+  prompt: string,
+  apiKey: string,
+  baseUrl: string,
+  model: string,
+): Promise<string> {
+  const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+  const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${config.llm.openaiApiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.llm.openaiModel,
-      messages: [{ role: 'user', content: prompt }],
-    }),
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] }),
   });
-  if (!res.ok) throw new Error(`OpenAI API ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`LLM API ${res.status}: ${await res.text()}`);
   const json = (await res.json()) as { choices: { message: { content: string } }[] };
   return json.choices[0]?.message?.content ?? '';
 }
@@ -104,11 +144,9 @@ function mockPost(brief: ContentBrief, ctx: string[]): GeneratedContent {
     'Generate Leads': 'Book your free consultation today — link in bio.',
     'Brand Awareness': 'Follow us for more tips that actually help.',
     'Drive Sales': 'Limited spots this week. DM us to claim yours.',
-    'Engagement': 'Tell us in the comments — what matters most to you?',
+    Engagement: 'Tell us in the comments — what matters most to you?',
   };
-  const learned = ctx.length
-    ? ` (Tuned from ${ctx.length} of your best-performing posts.)`
-    : '';
+  const learned = ctx.length ? ` (Tuned from ${ctx.length} of your best-performing posts.)` : '';
   const content =
     `${hook[brief.tone] ?? hook.professional} ` +
     `Our mission at this ${noun} is simple: deliver results that move your goal — ${brief.goal} — forward.` +

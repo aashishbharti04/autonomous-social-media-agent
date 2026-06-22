@@ -1,6 +1,8 @@
 import type {
   Analytics,
+  ApiIntegration,
   ConnectedAccount,
+  IntegrationKind,
   MediaAsset,
   Post,
   Recommendation,
@@ -21,6 +23,7 @@ export interface CreateAccountInput {
   accessToken: string;
 }
 
+export type AddIntegrationInput = Omit<ApiIntegration, 'id' | 'createdAt' | 'active'>;
 export type AddMediaInput = Omit<MediaAsset, 'id' | 'createdAt'>;
 export type CreatePostInput = Omit<Post, 'id' | 'createdAt'>;
 export type SetAnalyticsInput = Omit<Analytics, 'id' | 'capturedAt'>;
@@ -74,4 +77,12 @@ export interface Store {
   // Recommendations
   addRecommendations(items: AddRecommendationInput[]): Promise<Recommendation[]>;
   listRecommendations(userId: string, postId?: string): Promise<Recommendation[]>;
+
+  // AI integrations (bring-your-own keys)
+  listIntegrations(userId: string): Promise<ApiIntegration[]>;
+  addIntegration(input: AddIntegrationInput): Promise<ApiIntegration>;
+  deleteIntegration(userId: string, id: string): Promise<boolean>;
+  /** Make one integration the active one for its kind (deactivates siblings). */
+  setActiveIntegration(userId: string, kind: IntegrationKind, id: string): Promise<boolean>;
+  getActiveIntegration(userId: string, kind: IntegrationKind): Promise<ApiIntegration | undefined>;
 }

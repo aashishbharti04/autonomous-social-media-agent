@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { href: '/accounts', label: 'Accounts', icon: '🔗' },
   { href: '/media', label: 'Media', icon: '🖼️' },
   { href: '/agents', label: 'Agents', icon: '🤖' },
+  { href: '/settings', label: 'API Keys', icon: '🔑' },
   { href: '/guide', label: 'Guide', icon: '📖' },
 ];
 

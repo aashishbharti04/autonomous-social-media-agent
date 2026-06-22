@@ -3,7 +3,10 @@ import { v4 as uuid } from 'uuid';
 import { config } from '../config.js';
 import type {
   Analytics,
+  ApiIntegration,
   ConnectedAccount,
+  IntegrationKind,
+  IntegrationProvider,
   MediaAsset,
   Post,
   PostStatus,
@@ -12,6 +15,7 @@ import type {
   User,
 } from '../types.js';
 import type {
+  AddIntegrationInput,
   AddMediaInput,
   AddRecommendationInput,
   CreateAccountInput,
@@ -100,9 +104,22 @@ export class PostgresStore implements Store {
         suggestion TEXT NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+      CREATE TABLE IF NOT EXISTS integrations (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        label TEXT NOT NULL,
+        model TEXT,
+        base_url TEXT,
+        secret_enc TEXT NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
       CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id);
       CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id);
       CREATE INDEX IF NOT EXISTS idx_media_user ON media(user_id);
+      CREATE INDEX IF NOT EXISTS idx_integrations_user ON integrations(user_id);
     `);
   }
 
@@ -346,6 +363,86 @@ export class PostgresStore implements Store {
     );
     return rows.map(mapRec);
   }
+
+  // ---- Integrations ----
+  async listIntegrations(userId: string): Promise<ApiIntegration[]> {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM integrations WHERE user_id=$1 ORDER BY created_at DESC`,
+      [userId],
+    );
+    return rows.map(mapIntegration);
+  }
+
+  async addIntegration(input: AddIntegrationInput): Promise<ApiIntegration> {
+    const id = uuid();
+    const { rows: existing } = await this.pool.query(
+      `SELECT 1 FROM integrations WHERE user_id=$1 AND kind=$2 LIMIT 1`,
+      [input.userId, input.kind],
+    );
+    const active = existing.length === 0;
+    const { rows } = await this.pool.query(
+      `INSERT INTO integrations (id, user_id, kind, provider, label, model, base_url, secret_enc, active)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [
+        id,
+        input.userId,
+        input.kind,
+        input.provider,
+        input.label,
+        input.model ?? null,
+        input.baseUrl ?? null,
+        input.secretEnc,
+        active,
+      ],
+    );
+    return mapIntegration(rows[0]);
+  }
+
+  async deleteIntegration(userId: string, id: string): Promise<boolean> {
+    const { rows } = await this.pool.query(
+      `DELETE FROM integrations WHERE id=$1 AND user_id=$2 RETURNING kind, active`,
+      [id, userId],
+    );
+    if (!rows[0]) return false;
+    if (rows[0].active) {
+      // Promote another integration of the same kind to active.
+      await this.pool.query(
+        `UPDATE integrations SET active=true WHERE id = (
+           SELECT id FROM integrations WHERE user_id=$1 AND kind=$2 ORDER BY created_at DESC LIMIT 1
+         )`,
+        [userId, rows[0].kind],
+      );
+    }
+    return true;
+  }
+
+  async setActiveIntegration(
+    userId: string,
+    kind: IntegrationKind,
+    id: string,
+  ): Promise<boolean> {
+    const { rows } = await this.pool.query(
+      `SELECT 1 FROM integrations WHERE id=$1 AND user_id=$2 AND kind=$3`,
+      [id, userId, kind],
+    );
+    if (!rows[0]) return false;
+    await this.pool.query(
+      `UPDATE integrations SET active = (id = $3) WHERE user_id=$1 AND kind=$2`,
+      [userId, kind, id],
+    );
+    return true;
+  }
+
+  async getActiveIntegration(
+    userId: string,
+    kind: IntegrationKind,
+  ): Promise<ApiIntegration | undefined> {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM integrations WHERE user_id=$1 AND kind=$2 AND active=true LIMIT 1`,
+      [userId, kind],
+    );
+    return rows[0] ? mapIntegration(rows[0]) : undefined;
+  }
 }
 
 // ---- row mappers (snake_case → camelCase) ----
@@ -420,6 +517,20 @@ function mapRec(r: any): Recommendation {
     postId: r.post_id,
     type: r.type,
     suggestion: r.suggestion,
+    createdAt: iso(r.created_at)!,
+  };
+}
+function mapIntegration(r: any): ApiIntegration {
+  return {
+    id: r.id,
+    userId: r.user_id,
+    kind: r.kind as IntegrationKind,
+    provider: r.provider as IntegrationProvider,
+    label: r.label,
+    model: r.model ?? undefined,
+    baseUrl: r.base_url ?? undefined,
+    secretEnc: r.secret_enc,
+    active: r.active,
     createdAt: iso(r.created_at)!,
   };
 }

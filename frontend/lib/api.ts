@@ -519,6 +519,55 @@ export function deleteMedia(id: string): Promise<{ deleted: boolean }> {
  * browser can add the multipart boundary; the { ok, data } envelope is still
  * unwrapped and ok:false throws an ApiError, matching request().
  */
+// ---------------------------------------------------------------------------
+// AI provider integrations (bring-your-own API keys)
+// ---------------------------------------------------------------------------
+
+export type IntegrationProvider = 'anthropic' | 'openai' | 'openai-compatible';
+
+export interface Integration {
+  id: string;
+  kind: 'llm';
+  provider: IntegrationProvider;
+  label: string;
+  model?: string;
+  baseUrl?: string;
+  active: boolean;
+  keyMasked: string;
+  createdAt: string;
+}
+
+export interface AddIntegrationRequest {
+  provider: IntegrationProvider;
+  label: string;
+  apiKey: string;
+  model?: string;
+  baseUrl?: string;
+}
+
+export function getIntegrations(): Promise<Integration[]> {
+  return request<Integration[]>('/api/integrations');
+}
+
+export function addIntegration(body: AddIntegrationRequest): Promise<Integration> {
+  return request<Integration>('/api/integrations', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export function activateIntegration(id: string): Promise<{ active: string }> {
+  return request<{ active: string }>(`/api/integrations/${encodeURIComponent(id)}/activate`, {
+    method: 'POST',
+  });
+}
+
+export function deleteIntegration(id: string): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>(`/api/integrations/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function uploadMedia(file: File): Promise<MediaAsset> {
   const formData = new FormData();
   formData.append('file', file);

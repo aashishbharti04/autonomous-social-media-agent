@@ -1,13 +1,16 @@
 import { v4 as uuid } from 'uuid';
 import type {
   Analytics,
+  ApiIntegration,
   ConnectedAccount,
+  IntegrationKind,
   MediaAsset,
   Post,
   Recommendation,
   User,
 } from '../types.js';
 import type {
+  AddIntegrationInput,
   AddMediaInput,
   AddRecommendationInput,
   CreateAccountInput,
@@ -29,6 +32,7 @@ export class MemoryStore implements Store {
   private posts = new Map<string, Post>();
   private analytics = new Map<string, Analytics>();
   private recommendations = new Map<string, Recommendation>();
+  private integrations = new Map<string, ApiIntegration>();
 
   async init(): Promise<void> {
     /* nothing to set up */
@@ -192,5 +196,62 @@ export class MemoryStore implements Store {
     return [...this.recommendations.values()]
       .filter((r) => myPostIds.has(r.postId) && (!postId || r.postId === postId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  // ---- Integrations ----
+  async listIntegrations(userId: string): Promise<ApiIntegration[]> {
+    return [...this.integrations.values()]
+      .filter((i) => i.userId === userId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async addIntegration(input: AddIntegrationInput): Promise<ApiIntegration> {
+    const existing = [...this.integrations.values()].filter(
+      (i) => i.userId === input.userId && i.kind === input.kind,
+    );
+    const integration: ApiIntegration = {
+      ...input,
+      id: uuid(),
+      active: existing.length === 0, // first of its kind becomes active
+      createdAt: new Date().toISOString(),
+    };
+    this.integrations.set(integration.id, integration);
+    return integration;
+  }
+
+  async deleteIntegration(userId: string, id: string): Promise<boolean> {
+    const i = this.integrations.get(id);
+    if (!i || i.userId !== userId) return false;
+    this.integrations.delete(id);
+    // If we removed the active one, promote another of the same kind.
+    if (i.active) {
+      const sibling = [...this.integrations.values()].find(
+        (x) => x.userId === userId && x.kind === i.kind,
+      );
+      if (sibling) sibling.active = true;
+    }
+    return true;
+  }
+
+  async setActiveIntegration(
+    userId: string,
+    kind: IntegrationKind,
+    id: string,
+  ): Promise<boolean> {
+    const target = this.integrations.get(id);
+    if (!target || target.userId !== userId || target.kind !== kind) return false;
+    for (const i of this.integrations.values()) {
+      if (i.userId === userId && i.kind === kind) i.active = i.id === id;
+    }
+    return true;
+  }
+
+  async getActiveIntegration(
+    userId: string,
+    kind: IntegrationKind,
+  ): Promise<ApiIntegration | undefined> {
+    return [...this.integrations.values()].find(
+      (i) => i.userId === userId && i.kind === kind && i.active,
+    );
   }
 }

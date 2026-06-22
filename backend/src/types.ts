@@ -129,6 +129,47 @@ export interface AccountView {
   createdAt: string;
 }
 
+// ---- AI provider integrations (bring-your-own API keys) ----
+
+export type IntegrationKind = 'llm';
+export type IntegrationProvider = 'anthropic' | 'openai' | 'openai-compatible';
+
+export interface ApiIntegration {
+  id: string;
+  userId: string;
+  kind: IntegrationKind;
+  provider: IntegrationProvider;
+  label: string;
+  model?: string;
+  /** For openai-compatible providers (Groq, OpenRouter, Gemini, Mistral, …). */
+  baseUrl?: string;
+  /** Encrypted API key (never returned to clients). */
+  secretEnc: string;
+  active: boolean;
+  createdAt: string;
+}
+
+/** Public view — secret replaced with a mask. */
+export interface IntegrationView {
+  id: string;
+  kind: IntegrationKind;
+  provider: IntegrationProvider;
+  label: string;
+  model?: string;
+  baseUrl?: string;
+  active: boolean;
+  keyMasked: string;
+  createdAt: string;
+}
+
+/** Resolved provider config the LLM service uses to make a real call. */
+export interface ResolvedLlm {
+  provider: IntegrationProvider;
+  apiKey: string;
+  model?: string;
+  baseUrl?: string;
+}
+
 export type MediaSource = 'upload' | 'generated';
 
 export interface MediaAsset {
