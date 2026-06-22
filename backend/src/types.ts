@@ -17,7 +17,13 @@ export const PLATFORMS: Platform[] = [
   'pinterest',
 ];
 
-export type PostStatus = 'draft' | 'scheduled' | 'published' | 'failed';
+export type PostStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'publishing'
+  | 'published'
+  | 'failed'
+  | 'cancelled';
 
 export type Tone = 'professional' | 'friendly' | 'witty' | 'inspirational' | 'bold';
 
@@ -25,8 +31,13 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  passwordHash: string;
   plan: 'free' | 'pro' | 'business';
+  createdAt: string;
 }
+
+/** User without the password hash — safe to return in API responses. */
+export type SafeUser = Omit<User, 'passwordHash'>;
 
 export interface SocialAccount {
   id: string;
@@ -48,6 +59,7 @@ export interface Post {
   scheduledFor?: string;
   publishedAt?: string;
   externalId?: string;
+  failureReason?: string;
   createdAt: string;
 }
 
@@ -83,16 +95,19 @@ export interface ContentBrief {
   goal: string;
   platform: Platform;
   tone: Tone;
-  userId?: string;
+  userId: string;
   /** Publish to a specific connected account (overrides platform). */
   accountId?: string;
   /** Attach an existing media asset instead of generating an image. */
   imageUrl?: string;
+  /** ISO timestamp to schedule for later. Omit to publish immediately. */
+  scheduledFor?: string;
 }
 
 /** A client's social account that the agent can automate. */
 export interface ConnectedAccount {
   id: string;
+  userId: string;
   platform: Platform;
   handle: string;
   label: string;
@@ -118,6 +133,7 @@ export type MediaSource = 'upload' | 'generated';
 
 export interface MediaAsset {
   id: string;
+  userId: string;
   url: string;
   /** Disk path for uploads (absent for remote/generated URLs). */
   filePath?: string;

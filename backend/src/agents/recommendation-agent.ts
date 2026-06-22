@@ -1,5 +1,5 @@
 import { memory } from '../memory/vector-memory.js';
-import { repo } from '../store/repository.js';
+import { store } from '../db/index.js';
 import type { Analytics, Post, Recommendation, SeoResult } from '../types.js';
 import { BaseAgent, type SharedContext } from './base-agent.js';
 
@@ -57,15 +57,16 @@ export class RecommendationAgent extends BaseAgent<RecommendationInput, Recommen
           : 'Below-average engagement — test a different angle and increase cadence.',
     });
 
-    // --- Self-learning: store the outcome in long-term memory ---
+    // --- Self-learning: store the outcome in long-term memory (per user) ---
     memory.add(`${post.content} ${post.hashtags.join(' ')}`, {
+      userId: post.userId,
       postId: post.id,
       platform: post.platform,
       engagementRate: analytics.engagementRate,
       performedWell: analytics.engagementRate > 0.05,
     });
 
-    return repo.addRecommendations(drafts);
+    return store.addRecommendations(drafts);
   }
 
   private hour(post: Post): string {

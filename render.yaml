@@ -26,8 +26,16 @@ services:
         value: mock
       - key: VECTOR_PROVIDER
         value: memory
+      # Persistence: set DB_PROVIDER=postgres and paste your Neon connection
+      # string into DATABASE_URL (the backend auto-creates its tables on boot).
+      # Leave DB_PROVIDER=memory to run without a database (data resets).
       - key: DB_PROVIDER
-        value: memory
+        value: postgres
+      - key: DATABASE_URL
+        sync: false
+      # Secret for signing login tokens — Render generates a strong value.
+      - key: JWT_SECRET
+        generateValue: true
       # PORT and RENDER_EXTERNAL_URL are injected automatically by Render.
 
   # ---- Frontend: Next.js dashboard ----

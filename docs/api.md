@@ -3,6 +3,21 @@
 Base URL: `http://localhost:4000`
 All request/response bodies are JSON. All responses are wrapped: `{ "ok": true, "data": ... }` on success, `{ "ok": false, "error": "message" }` on failure.
 
+## Authentication
+
+All data endpoints require a JWT: send `Authorization: Bearer <token>`. Missing/expired tokens return **401**. Data is **scoped per user** — you only ever see your own accounts, posts, media, analytics and memory.
+
+**Public** (no token): `GET /api/health`, `GET /api/agents`, `GET /api/trends`, `GET /api/image/placeholder`, and the auth endpoints below.
+
+### `POST /api/auth/register`
+Body `{ "name", "email", "password" }` (password ≥ 6 chars). → `data: { token, user }` where `user = { id, name, email, plan, createdAt }`. **409** if the email is taken.
+
+### `POST /api/auth/login`
+Body `{ "email", "password" }`. → `data: { token, user }`. **401** on bad credentials.
+
+### `GET /api/auth/me`
+(auth) → `data: { user }`.
+
 ---
 
 ## Health & meta
@@ -66,16 +81,26 @@ Response `data`:
 
 ---
 
-## Posts
+## Posts & lifecycle
+
+Post `status` ∈ `draft | scheduled | publishing | published | failed | cancelled`.
+
+The campaign brief (`/api/campaign/run`) accepts an optional **`scheduledFor`** (ISO 8601). When set to a future time the post is saved as `scheduled` (waiting) and the campaign response is `{ post, seo, scheduled: true, analytics: null, recommendations: [], timeline }`. A background scheduler publishes it when its time arrives, then runs Analytics + Recommendation.
 
 ### `GET /api/posts`
-List all posts (newest first). Each item: `{ id, platform, content, imageUrl, status, createdAt, analytics }`.
+List the user's posts (newest first). Each item includes `status`, `scheduledFor`, `publishedAt`, `failureReason`, and `analytics`.
 
 ### `GET /api/posts/:id`
 Full post detail including `analytics` and `recommendations`.
 
 ### `POST /api/posts/:id/publish`
-Publishes a draft/scheduled post (mock). Returns the updated post.
+Publish a scheduled/failed post immediately. Returns the updated post.
+
+### `POST /api/posts/:id/retry`
+Retry a `failed` post. Returns the updated post.
+
+### `POST /api/posts/:id/cancel`
+Cancel a `scheduled` post (→ `cancelled`). Returns the updated post.
 
 ---
 
@@ -85,6 +110,7 @@ Publishes a draft/scheduled post (mock). Returns the updated post.
 ```json
 { "ok": true, "data": {
   "totals": { "posts": 12, "reach": 64000, "impressions": 98000, "clicks": 2400, "avgEngagementRate": 0.058 },
+  "statusCounts": { "published": 9, "scheduled": 2, "failed": 1 },
   "byPlatform": [ { "platform": "linkedin", "posts": 4, "avgEngagementRate": 0.07 } ],
   "comparison": { "manual": 0.018, "aiGenerated": 0.034, "autonomousAgent": 0.058 }
 } }

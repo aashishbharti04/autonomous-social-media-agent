@@ -58,9 +58,10 @@ class VectorMemory {
     return record;
   }
 
-  search(query: string, k = 5): MemoryHit[] {
+  search(query: string, k = 5, filter?: (m: Record<string, unknown>) => boolean): MemoryHit[] {
     const q = embed(query);
     return this.records
+      .filter((r) => !filter || filter(r.metadata))
       .map((r) => ({
         id: r.id,
         text: r.text,

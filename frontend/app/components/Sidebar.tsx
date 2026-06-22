@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from './AuthProvider';
 
 interface NavItem {
   href: string;
@@ -24,6 +25,7 @@ const NAV: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-slate-800/80 bg-slate-950/70 px-4 py-6 backdrop-blur">
@@ -60,7 +62,28 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-6 rounded-lg border border-slate-800/80 bg-slate-900/50 p-3 text-xs text-slate-500">
+      {user && (
+        <div className="mt-6 rounded-lg border border-slate-800/80 bg-slate-900/50 p-3">
+          <div className="flex items-center gap-2">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-600/30 text-sm font-semibold text-brand-200">
+              {user.name?.[0]?.toUpperCase() || user.email[0]?.toUpperCase()}
+            </span>
+            <div className="min-w-0 leading-tight">
+              <p className="truncate text-sm font-medium text-slate-100">{user.name}</p>
+              <p className="truncate text-xs text-slate-500">{user.email}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="btn-secondary mt-3 w-full justify-center text-xs"
+          >
+            Log out
+          </button>
+        </div>
+      )}
+
+      <div className="mt-3 rounded-lg border border-slate-800/80 bg-slate-900/50 p-3 text-xs text-slate-500">
         Multi-agent pipeline: content, SEO, image, publishing, analytics &amp; self-learning.
       </div>
     </aside>

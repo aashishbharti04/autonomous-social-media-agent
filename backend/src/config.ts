@@ -60,6 +60,15 @@ export const config = {
     instagram: env('INSTAGRAM_ACCESS_TOKEN'),
     twitter: env('TWITTER_BEARER_TOKEN'),
   },
+
+  auth: {
+    // Set JWT_SECRET in production. A random-ish dev fallback is used otherwise.
+    jwtSecret: env('JWT_SECRET', 'dev-insecure-secret-change-me'),
+    jwtExpiresIn: env('JWT_EXPIRES_IN', '7d'),
+  },
+
+  // How often the scheduler checks for due posts (ms).
+  schedulerIntervalMs: Number(env('SCHEDULER_INTERVAL_MS', '30000')),
 };
 
 /** True when every external dependency is unconfigured — the all-offline demo mode. */

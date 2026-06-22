@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 
-type Tone = 'slate' | 'green' | 'blue' | 'amber' | 'red' | 'indigo';
+export type Tone = 'slate' | 'green' | 'blue' | 'amber' | 'red' | 'indigo';
 
 interface BadgeProps {
   children: ReactNode;

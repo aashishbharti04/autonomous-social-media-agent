@@ -2,7 +2,9 @@ import cors from 'cors';
 import express from 'express';
 import { ZodError } from 'zod';
 import { appMode, config, paths } from './config.js';
+import { store } from './db/index.js';
 import { api } from './routes/api.js';
+import { startScheduler } from './scheduler.js';
 
 const app = express();
 app.use(cors());
@@ -45,9 +47,19 @@ app.use(
   },
 );
 
-app.listen(config.port, () => {
+async function start(): Promise<void> {
+  await store.init();
+  startScheduler();
+  app.listen(config.port, () => {
+    // eslint-disable-next-line no-console
+    console.log(
+      `🤖 Autonomous Social Media Agent API listening on http://localhost:${config.port} [mode: ${appMode()}, db: ${config.db.provider}]`,
+    );
+  });
+}
+
+start().catch((err) => {
   // eslint-disable-next-line no-console
-  console.log(
-    `🤖 Autonomous Social Media Agent API listening on http://localhost:${config.port} [mode: ${appMode()}]`,
-  );
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });

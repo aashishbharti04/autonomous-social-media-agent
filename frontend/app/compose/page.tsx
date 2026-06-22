@@ -22,6 +22,7 @@ import { formatNumber, formatPercent, formatDate } from '../components/format';
 
 type Action = 'draft' | 'campaign' | null;
 type ImageMode = 'auto' | 'library';
+type ScheduleMode = 'now' | 'later';
 
 export default function ComposePage() {
   const [businessType, setBusinessType] = useState('Dental Clinic');
@@ -36,6 +37,10 @@ export default function ComposePage() {
   const [imageUrl, setImageUrl] = useState('');
   const [media, setMedia] = useState<MediaAsset[]>([]);
   const [mediaLoaded, setMediaLoaded] = useState(false);
+
+  // Optional: schedule the full campaign for later instead of publishing now.
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('now');
+  const [scheduledFor, setScheduledFor] = useState('');
 
   const [pending, setPending] = useState<Action>(null);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +101,11 @@ export default function ComposePage() {
         setDraft(await generateContent(payload));
       } else {
         setDraft(null);
-        setCampaign(await runCampaign(payload));
+        const campaignPayload =
+          scheduleMode === 'later' && scheduledFor
+            ? { ...payload, scheduledFor: new Date(scheduledFor).toISOString() }
+            : payload;
+        setCampaign(await runCampaign(campaignPayload));
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong.');
@@ -249,6 +258,33 @@ export default function ComposePage() {
               />
             </div>
 
+            <div>
+              <label className="label" htmlFor="schedule">Schedule</label>
+              <select
+                id="schedule"
+                className="input"
+                value={scheduleMode}
+                onChange={(e) => setScheduleMode(e.target.value as ScheduleMode)}
+              >
+                <option value="now">Publish now (default)</option>
+                <option value="later">Schedule for later</option>
+              </select>
+              {scheduleMode === 'later' && (
+                <div className="mt-2">
+                  <input
+                    type="datetime-local"
+                    className="input"
+                    value={scheduledFor}
+                    onChange={(e) => setScheduledFor(e.target.value)}
+                    aria-label="Schedule date and time"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    The campaign runs but the post is scheduled instead of published.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="flex flex-col gap-2 pt-2">
               <button
                 type="button"
@@ -258,8 +294,18 @@ export default function ComposePage() {
               >
                 {pending === 'draft' ? 'Generating…' : 'Generate Draft'}
               </button>
-              <button type="submit" className="btn-primary" disabled={busy}>
-                {pending === 'campaign' ? 'Running pipeline…' : '🚀 Run Full Campaign'}
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={busy || (scheduleMode === 'later' && !scheduledFor)}
+              >
+                {pending === 'campaign'
+                  ? scheduleMode === 'later'
+                    ? 'Scheduling…'
+                    : 'Running pipeline…'
+                  : scheduleMode === 'later'
+                  ? '🗓️ Schedule Campaign'
+                  : '🚀 Run Full Campaign'}
               </button>
             </div>
           </form>
@@ -384,10 +430,29 @@ function DraftView({ draft, platform }: { draft: Draft; platform: Platform }) {
 }
 
 function CampaignView({ result }: { result: CampaignResult }) {
-  const { post, analytics, recommendations, timeline, seo } = result;
+  const { post, analytics, recommendations, timeline, seo, scheduled } = result;
 
   return (
     <div className="space-y-6">
+      {/* Scheduled confirmation */}
+      {scheduled && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <div className="flex items-start gap-3">
+            <span className="text-xl" aria-hidden="true">✅</span>
+            <div>
+              <p className="text-sm font-medium text-amber-200">
+                Scheduled for{' '}
+                {post.scheduledFor ? formatDate(post.scheduledFor) : 'later'}
+              </p>
+              <p className="mt-1 text-sm text-slate-400">
+                The campaign ran and the post is queued. It will publish automatically at
+                the scheduled time. You can manage it from the Posts page.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Timeline */}
       <Card title="Agent Pipeline" subtitle="Execution timeline">
         <ol className="space-y-3">
@@ -408,9 +473,9 @@ function CampaignView({ result }: { result: CampaignResult }) {
         </ol>
       </Card>
 
-      {/* Published post */}
+      {/* Published / scheduled post */}
       <Card
-        title="Published Post"
+        title={scheduled ? 'Scheduled Post' : 'Published Post'}
         actions={
           <div className="flex items-center gap-2">
             <Badge tone="slate">{post.platform}</Badge>
@@ -444,23 +509,25 @@ function CampaignView({ result }: { result: CampaignResult }) {
         </div>
       </Card>
 
-      {/* Analytics */}
-      <div>
-        <h3 className="mb-3 section-title">Predicted Analytics</h3>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-          <StatCard label="Reach" value={formatNumber(analytics.reach)} accent="sky" />
-          <StatCard label="Impressions" value={formatNumber(analytics.impressions)} />
-          <StatCard label="Clicks" value={formatNumber(analytics.clicks)} accent="indigo" />
-          {typeof analytics.likes === 'number' && (
-            <StatCard label="Likes" value={formatNumber(analytics.likes)} accent="amber" />
-          )}
-          <StatCard
-            label="Engagement"
-            value={formatPercent(analytics.engagementRate)}
-            accent="emerald"
-          />
+      {/* Analytics (only for published runs) */}
+      {analytics && (
+        <div>
+          <h3 className="mb-3 section-title">Predicted Analytics</h3>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+            <StatCard label="Reach" value={formatNumber(analytics.reach)} accent="sky" />
+            <StatCard label="Impressions" value={formatNumber(analytics.impressions)} />
+            <StatCard label="Clicks" value={formatNumber(analytics.clicks)} accent="indigo" />
+            {typeof analytics.likes === 'number' && (
+              <StatCard label="Likes" value={formatNumber(analytics.likes)} accent="amber" />
+            )}
+            <StatCard
+              label="Engagement"
+              value={formatPercent(analytics.engagementRate)}
+              accent="emerald"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Recommendations */}
       {recommendations.length > 0 && (

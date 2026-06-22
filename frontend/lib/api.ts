@@ -8,6 +8,39 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') || 'http://localhost:4000';
 
 // ---------------------------------------------------------------------------
+// Auth token store (localStorage, SSR-guarded)
+// ---------------------------------------------------------------------------
+
+const TOKEN_KEY = 'asma_token';
+
+export function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    /* storage unavailable — token simply not persisted */
+  }
+}
+
+export function clearToken(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Shared domain types (match docs/api.md)
 // ---------------------------------------------------------------------------
 
@@ -65,7 +98,14 @@ export interface Analytics {
   engagementRate: number;
 }
 
-export type PostStatus = 'draft' | 'scheduled' | 'published' | string;
+export type PostStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'publishing'
+  | 'published'
+  | 'failed'
+  | 'cancelled'
+  | string;
 
 export interface Post {
   id: string;
@@ -79,6 +119,8 @@ export interface Post {
   publishedAt?: string;
   externalId?: string;
   analytics?: Analytics;
+  failureReason?: string;
+  error?: string;
 }
 
 export type RecommendationType = 'timing' | 'content' | 'hashtag' | string;
@@ -100,7 +142,8 @@ export interface TimelineStep {
 export interface CampaignResult {
   post: Post;
   seo: Seo;
-  analytics: Analytics;
+  scheduled: boolean;
+  analytics: Analytics | null;
   recommendations: Recommendation[];
   timeline: TimelineStep[];
 }
@@ -120,6 +163,7 @@ export interface AnalyticsSummary {
     avgEngagementRate: number;
   };
   byPlatform: PlatformBreakdown[];
+  statusCounts: Record<string, number>;
   comparison: {
     manual: number;
     aiGenerated: number;
@@ -156,6 +200,37 @@ export interface CampaignRequest extends GenerateRequest {
 export interface ComposeOptions {
   accountId?: string;
   imageUrl?: string;
+  // Only honored by /campaign/run — when set, the post is scheduled instead
+  // of published immediately. ISO 8601 string.
+  scheduledFor?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  plan: string;
+  createdAt: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: AuthUser;
+}
+
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -216,10 +291,17 @@ export interface GenerateMediaRequest {
 type Envelope<T> = { ok: true; data: T } | { ok: false; error: string };
 
 export class ApiError extends Error {
-  constructor(message: string) {
+  status?: number;
+  constructor(message: string, status?: number) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
   }
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -229,6 +311,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders(),
         ...(init?.headers || {}),
       },
       cache: 'no-store',
@@ -239,18 +322,31 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     );
   }
 
+  // 401 → drop the stale token so the auth gate can redirect to /login.
+  if (res.status === 401) {
+    clearToken();
+    let message = 'Your session has expired. Please sign in again.';
+    try {
+      const body = (await res.json()) as Envelope<T>;
+      if (!body.ok && body.error) message = body.error;
+    } catch {
+      /* keep default message */
+    }
+    throw new ApiError(message, 401);
+  }
+
   let body: Envelope<T> | null = null;
   try {
     body = (await res.json()) as Envelope<T>;
   } catch {
     if (!res.ok) {
-      throw new ApiError(`Request failed (${res.status} ${res.statusText})`);
+      throw new ApiError(`Request failed (${res.status} ${res.statusText})`, res.status);
     }
-    throw new ApiError('Received an invalid response from the backend.');
+    throw new ApiError('Received an invalid response from the backend.', res.status);
   }
 
   if (!body.ok) {
-    throw new ApiError(body.error || `Request failed (${res.status})`);
+    throw new ApiError(body.error || `Request failed (${res.status})`, res.status);
   }
   return body.data;
 }
@@ -272,6 +368,28 @@ function buildQuery(params: Record<string, string | number | undefined>): string
 
 export function getHealth(): Promise<Health> {
   return request<Health>('/api/health');
+}
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+export function register(body: RegisterRequest): Promise<AuthResponse> {
+  return request<AuthResponse>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export function login(body: LoginRequest): Promise<AuthResponse> {
+  return request<AuthResponse>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export function getMe(): Promise<{ user: AuthUser }> {
+  return request<{ user: AuthUser }>('/api/auth/me');
 }
 
 export function getAgents(): Promise<Agent[]> {
@@ -306,6 +424,18 @@ export function getPost(id: string): Promise<Post> {
 
 export function publishPost(id: string): Promise<Post> {
   return request<Post>(`/api/posts/${encodeURIComponent(id)}/publish`, {
+    method: 'POST',
+  });
+}
+
+export function retryPost(id: string): Promise<Post> {
+  return request<Post>(`/api/posts/${encodeURIComponent(id)}/retry`, {
+    method: 'POST',
+  });
+}
+
+export function cancelPost(id: string): Promise<Post> {
+  return request<Post>(`/api/posts/${encodeURIComponent(id)}/cancel`, {
     method: 'POST',
   });
 }
@@ -397,6 +527,8 @@ export async function uploadMedia(file: File): Promise<MediaAsset> {
   try {
     res = await fetch(`${API_BASE_URL}/api/media/upload`, {
       method: 'POST',
+      // Do NOT set Content-Type — the browser adds the multipart boundary.
+      headers: { ...authHeaders() },
       body: formData,
       cache: 'no-store',
     });
@@ -404,6 +536,11 @@ export async function uploadMedia(file: File): Promise<MediaAsset> {
     throw new ApiError(
       'Cannot reach the backend. Is it running on ' + API_BASE_URL + '?'
     );
+  }
+
+  if (res.status === 401) {
+    clearToken();
+    throw new ApiError('Your session has expired. Please sign in again.', 401);
   }
 
   let body: Envelope<MediaAsset> | null = null;

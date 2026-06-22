@@ -16,9 +16,12 @@ Built as a unified **Node.js + TypeScript** monorepo (Express API + Next.js dash
 - **Auto-learning loop** — the Recommendation agent writes each post's outcome back into memory, so future content is tuned by what actually performed.
 - **Trend Detection Engine** — surfaces content ideas from (mock) Google Trends / Reddit / News / social signals.
 - **Provider-agnostic** — every external dependency has a mock default and a live integration point.
+- 🔐 **Accounts & multi-user** — email/password auth (JWT, bcrypt) with **per-user data isolation**; each user sees only their own accounts, posts, media and memory.
+- 🗄️ **Persistent database** — PostgreSQL store (auto-migrates on boot) or an in-memory store for offline dev.
+- ⏱️ **Scheduling & post lifecycle** — `draft → scheduled → publishing → published / failed`, a background scheduler that auto-publishes due posts, and cancel/retry/publish-now controls.
 - **Client account management** — connect/pause/disconnect the social accounts you want to automate; pick a target account per campaign.
 - **Media library** — upload images, generate them via the Image Agent, delete them, and attach them to posts.
-- **Polished dashboard** — compose, run full campaigns, manage accounts & media, browse posts, view analytics, explore trends, search memory, plus an in-app user guide.
+- **Polished dashboard** — login, compose & schedule campaigns, manage accounts & media, filter posts by status, view analytics, explore trends, search memory, plus an in-app user guide.
 
 ---
 
@@ -103,9 +106,11 @@ Quick version: Render → New + → Blueprint → pick this repo → after the A
 
 **Frontend:** Next.js 14 (App Router), React 18, Tailwind CSS, TypeScript
 **Backend:** Node.js, Express, TypeScript, Zod
+**Auth:** JWT (jsonwebtoken) + bcrypt password hashing, per-user scoping
 **AI layer:** provider-agnostic LLM service (Claude / OpenAI), in-process RAG vector memory
-**Data:** PostgreSQL schema ([`db/schema.sql`](db/schema.sql)) with an in-memory default
-**Designed-for (production):** ChromaDB / pgvector, Redis + BullMQ scheduling
+**Data:** PostgreSQL (node-postgres, auto-migrating) or in-memory store
+**Scheduling:** in-process interval scheduler (production-ready to swap for Redis + BullMQ)
+**Designed-for (production):** ChromaDB / pgvector, Redis + BullMQ
 
 ---
 

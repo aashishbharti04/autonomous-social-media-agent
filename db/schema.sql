@@ -6,12 +6,17 @@
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- NOTE: in this project the backend auto-creates these tables on startup
+-- (see backend/src/db/postgres-store.ts). This file documents the schema.
+
 CREATE TABLE IF NOT EXISTS users (
-    id    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name  TEXT        NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    plan  TEXT        NOT NULL DEFAULT 'free'
-                      CHECK (plan IN ('free', 'pro', 'business'))
+    id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name          TEXT        NOT NULL,
+    email         TEXT UNIQUE NOT NULL,
+    password_hash TEXT        NOT NULL,           -- bcrypt hash
+    plan          TEXT        NOT NULL DEFAULT 'free'
+                              CHECK (plan IN ('free', 'pro', 'business')),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS social_accounts (
@@ -32,11 +37,12 @@ CREATE TABLE IF NOT EXISTS posts (
     hashtags      TEXT[] NOT NULL DEFAULT '{}',
     image_url     TEXT,
     status        TEXT NOT NULL DEFAULT 'draft'
-                  CHECK (status IN ('draft','scheduled','published','failed')),
-    scheduled_for TIMESTAMPTZ,
-    published_at  TIMESTAMPTZ,
-    external_id   TEXT,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+                  CHECK (status IN ('draft','scheduled','publishing','published','failed','cancelled')),
+    scheduled_for  TIMESTAMPTZ,
+    published_at   TIMESTAMPTZ,
+    external_id    TEXT,
+    failure_reason TEXT,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS analytics (

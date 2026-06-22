@@ -5,6 +5,7 @@ import { useAsync } from './components/useAsync';
 import Card from './components/Card';
 import StatCard from './components/StatCard';
 import Badge, { toneForStatus } from './components/Badge';
+import type { Tone } from './components/Badge';
 import Spinner from './components/Spinner';
 import ErrorState from './components/ErrorState';
 import ComparisonBars from './components/ComparisonBars';
@@ -43,6 +44,11 @@ export default function DashboardPage() {
             />
           </div>
         )}
+
+        {/* Lifecycle status chips */}
+        {summary.data?.statusCounts && (
+          <StatusChips counts={summary.data.statusCounts} />
+        )}
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -77,6 +83,29 @@ export default function DashboardPage() {
           )}
         </Card>
       </div>
+    </div>
+  );
+}
+
+const CHIP_ORDER: { key: string; label: string; tone: Tone }[] = [
+  { key: 'scheduled', label: 'Scheduled', tone: 'amber' },
+  { key: 'publishing', label: 'Publishing', tone: 'blue' },
+  { key: 'published', label: 'Published', tone: 'green' },
+  { key: 'failed', label: 'Failed', tone: 'red' },
+  { key: 'cancelled', label: 'Cancelled', tone: 'slate' },
+  { key: 'draft', label: 'Draft', tone: 'slate' },
+];
+
+function StatusChips({ counts }: { counts: Record<string, number> }) {
+  const chips = CHIP_ORDER.filter((c) => (counts[c.key] ?? 0) > 0);
+  if (chips.length === 0) return null;
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {chips.map((c) => (
+        <Badge key={c.key} tone={c.tone}>
+          {c.label}: {counts[c.key]}
+        </Badge>
+      ))}
     </div>
   );
 }

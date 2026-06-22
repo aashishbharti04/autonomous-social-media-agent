@@ -1,4 +1,4 @@
-import { repo } from '../store/repository.js';
+import { store } from '../db/index.js';
 import type { Analytics, Post, SeoResult } from '../types.js';
 import { BaseAgent, type SharedContext } from './base-agent.js';
 
@@ -25,7 +25,7 @@ export class AnalyticsAgent extends BaseAgent<Post, Analytics> {
     const likes = Math.round(reach * (0.03 + quality * 0.05));
     const engagementRate = Number(((clicks + likes) / impressions).toFixed(4));
 
-    const analytics = repo.setAnalytics({
+    const analytics = await store.setAnalytics({
       postId: post.id,
       reach,
       impressions,

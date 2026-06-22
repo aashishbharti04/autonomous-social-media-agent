@@ -1,4 +1,4 @@
-import { repo } from '../store/repository.js';
+import { store } from '../db/index.js';
 import { publishToPlatform } from '../services/social.js';
 import type { ContentBrief, Post } from '../types.js';
 import { BaseAgent, type SharedContext } from './base-agent.js';
@@ -15,37 +15,43 @@ const BEST_HOUR: Record<string, number> = {
 };
 
 /**
- * Publishing Agent — persists the post, schedules it for the predicted best
- * time, then publishes (mock unless a social token is configured).
+ * Publishing Agent — persists the post. If the brief asks to schedule for a
+ * future time, the post is saved as `scheduled` (waiting) and the background
+ * scheduler publishes it later. Otherwise it publishes immediately.
  */
 export class PublishingAgent extends BaseAgent<ContentBrief, Post> {
   readonly id = 'publishing';
   readonly name = 'Publishing Agent';
 
   protected async handle(brief: ContentBrief, ctx: SharedContext): Promise<Post> {
-    const userId = brief.userId ?? repo.getDefaultUser().id;
-    const scheduledFor = this.nextSlot(brief.platform);
+    const now = Date.now();
+    const scheduleAt = brief.scheduledFor ? Date.parse(brief.scheduledFor) : NaN;
+    const isFuture = Number.isFinite(scheduleAt) && scheduleAt > now + 1000;
+    const scheduledFor = isFuture ? brief.scheduledFor : this.nextSlot(brief.platform);
 
-    let post = repo.createPost({
-      userId,
+    let post = await store.createPost({
+      userId: brief.userId,
       accountId: brief.accountId,
       platform: brief.platform,
       content: String(ctx.blackboard.content ?? ''),
       hashtags: (ctx.blackboard.hashtags as string[]) ?? [],
       imageUrl: ctx.blackboard.imageUrl as string | undefined,
-      status: 'scheduled',
+      status: isFuture ? 'scheduled' : 'publishing',
       scheduledFor,
     });
 
+    ctx.blackboard.scheduled = isFuture;
+    ctx.blackboard.postId = post.id;
+
+    if (isFuture) return post; // waiting — the scheduler will publish it
+
     const result = await publishToPlatform(post);
     post =
-      repo.updatePost(post.id, {
+      (await store.updatePost(post.id, {
         status: 'published',
         publishedAt: new Date().toISOString(),
         externalId: result.externalId,
-      }) ?? post;
-
-    ctx.blackboard.postId = post.id;
+      })) ?? post;
     return post;
   }
 
@@ -58,6 +64,8 @@ export class PublishingAgent extends BaseAgent<ContentBrief, Post> {
   }
 
   protected summarize(output: Post): string {
-    return `Published to ${output.platform} (${output.externalId})`;
+    return output.status === 'scheduled'
+      ? `Scheduled for ${output.scheduledFor}`
+      : `Published to ${output.platform} (${output.externalId})`;
   }
 }

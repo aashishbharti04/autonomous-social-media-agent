@@ -14,7 +14,11 @@ export class ContentAgent extends BaseAgent<ContentBrief, GeneratedContent> {
 
   protected async handle(brief: ContentBrief, ctx: SharedContext): Promise<GeneratedContent> {
     const recalled = memory
-      .search(`${brief.businessType} ${brief.goal} ${brief.platform}`, 3)
+      .search(
+        `${brief.businessType} ${brief.goal} ${brief.platform}`,
+        3,
+        (m) => m.userId === brief.userId,
+      )
       .filter((hit) => hit.score > 0)
       .map((hit) => hit.text);
 
